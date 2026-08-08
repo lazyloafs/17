@@ -1,5 +1,5 @@
--- DeepOptimizer.lua — PoB UI integration for poenodefinderlocally
--- Standalone launcher headless wrapper entry point (no Electron).
+-- DeepOptimizer.lua — PoB UI integration for localoptimizer
+-- Tree tab buttons: Opt DPS / Opt Tank (one-click deep optimize)
 
 local DeepOptimizer = {}
 DeepOptimizer.__index = DeepOptimizer
@@ -9,11 +9,7 @@ function DeepOptimizer:Init(buildModule)
 	self.engine = dofile(MainScriptPath .. "DeepOptimizer/engine.lua")
 	self.headless = dofile(MainScriptPath .. "DeepOptimizer/headless.lua")
 	self.engine:loadDefaults(MainScriptPath .. "DeepOptimizer/configs/optimizer-defaults.json")
-	-- Process pending headless request if Launch_Headless_Optimizer.bat was used
-	local build = self:GetActiveBuild()
-	if build then
-		self.headless:tryRun(build, self)
-	end
+	self.running = false
 end
 
 function DeepOptimizer:GetActiveBuild()
@@ -37,101 +33,106 @@ function DeepOptimizer:RunHeadless(build, options)
 	return self.engine:optimize(build, options or { headless = true })
 end
 
-function DeepOptimizer:AddTreeTabButton(treeTab)
-	if treeTab.controls and treeTab.controls.deepOptimizeButton then
+function DeepOptimizer:DefaultOptions(mode)
+	local defaults = self.engine.defaults or {}
+	return {
+		generations = defaults.generations or 60,
+		population = defaults.population or 60,
+		useTradeItems = true,
+		optimizeClusters = true,
+		requireRegen = mode == "tank",
+		optimizeJewels = true,
+		mutateJewelPaths = true,
+		dualPhase = false,
+		singlePhase = mode == "tank" and "opposite" or "main",
+		archetype = mode == "tank" and "generic_tanky" or "generic_dps",
+	}
+end
+
+function DeepOptimizer:SetButtonStatus(treeTab, mode, text)
+	local btn = mode == "tank" and treeTab.controls.optTankButton or treeTab.controls.optDpsButton
+	if btn then
+		btn.label = text
+	end
+end
+
+function DeepOptimizer:RunQuickOptimize(treeTab, mode)
+	if self.running then
+		return
+	end
+	local build = treeTab.build
+	if not build then
+		return
+	end
+
+	self.running = true
+	local label = mode == "tank" and "Opt Tank" or "Opt DPS"
+	local options = self:DefaultOptions(mode)
+	local gens = options.generations
+
+	self:SetButtonStatus(treeTab, mode, "Running...")
+	ConPrintf("localoptimizer: %s started (%d gens)\n", label, gens)
+
+	local result, err = self:Run({
+		archetype = options.archetype,
+		generations = gens,
+		population = options.population,
+		useTradeItems = options.useTradeItems,
+		optimizeClusters = options.optimizeClusters,
+		requireRegen = options.requireRegen,
+		dualPhase = false,
+		singlePhase = options.singlePhase,
+		optimizeJewels = options.optimizeJewels,
+		mutateJewelPaths = options.mutateJewelPaths,
+		onProgress = function(gen, best, phaseLabel)
+			if gen % 10 == 0 or gen == gens then
+				ConPrintf("localoptimizer: %s gen %d/%d — fitness %.2f\n", phaseLabel or label, gen, gens, best)
+			end
+		end,
+	})
+
+	self.running = false
+	self:SetButtonStatus(treeTab, mode, label)
+
+	if not result then
+		ConPrintf("localoptimizer: %s failed — %s\n", label, tostring(err))
+		return
+	end
+
+	ConPrintf("localoptimizer: %s done — DPS %.0f, regen +%.0f/s, eHP %.0f\n",
+		label, result.dps or 0, result.netRegen or 0, result.ehp or 0)
+	build:SyncTree()
+	build:BuildAll()
+end
+
+function DeepOptimizer:AddTreeTabButtons(treeTab)
+	if treeTab.controls and treeTab.controls.optDpsButton then
 		return
 	end
 	treeTab.controls = treeTab.controls or {}
-	treeTab.controls.deepOptimizeButton = new("ButtonControl", {
-		"TREE", "DeepOptimize",
-	}, "12", "Deep Optimize", function()
-		self:ShowOptimizeDialog(treeTab)
-	end)
-end
 
-function DeepOptimizer:ShowOptimizeDialog(treeTab)
-	local build = treeTab.build
-	local defaults = self.engine.defaults or {}
-	local controls = {}
-	local status = "Ready."
+	local anchor = treeTab.controls.powerReport or treeTab.controls.findTimelessJewel or treeTab.controls.treeSearch
 
-	controls.statusLabel = new("LabelControl", { "TOPLEFT", controls, "TOPLEFT" }, { 0, 20, 300, 16 }, status)
-	controls.archetypeList = new("DropDownControl", { "TOPLEFT", controls.statusLabel, "BOTTOMLEFT" }, { 0, 8, 220, 20 },
-		{ "rf_arcane_devotion", "generic_dps", "generic_tanky" }, function(index, value)
-			self.selectedArchetype = value
+	treeTab.controls.optDpsButton = new("ButtonControl",
+		{ "LEFT", anchor, "RIGHT" }, { 8, 0, 72, 20 }, "Opt DPS", function()
+			self:RunQuickOptimize(treeTab, "dps")
 		end)
-	controls.archetypeLabel = new("LabelControl", { "RIGHT", controls.archetypeList, "LEFT" }, { -8, 0, 0, 16 }, "Archetype:")
-	controls.generationsEdit = new("EditControl", { "TOPLEFT", controls.archetypeList, "BOTTOMLEFT" }, { 0, 8, 60, 20 }, tostring(defaults.generations or 60))
-	controls.generationsLabel = new("LabelControl", { "RIGHT", controls.generationsEdit, "LEFT" }, { -8, 0, 0, 16 }, "Generations:")
-	controls.populationEdit = new("EditControl", { "LEFT", controls.generationsEdit, "RIGHT" }, { 8, 0, 60, 20 }, tostring(defaults.population or 60))
-	controls.populationLabel = new("LabelControl", { "RIGHT", controls.populationEdit, "LEFT" }, { -8, 0, 0, 16 }, "Population:")
-	controls.tradeItemsCheck = new("CheckBoxControl", { "TOPLEFT", controls.generationsEdit, "BOTTOMLEFT" }, { 0, 8, 18 }, "Use trade item pool (non-self-owned)", function(state)
-		self.useTradeItems = state
-	end)
-	controls.tradeItemsCheck.state = true
-	controls.clusterCheck = new("CheckBoxControl", { "TOPLEFT", controls.tradeItemsCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Optimize cluster SP routing", function(state)
-		self.optimizeClusters = state
-	end)
-	controls.clusterCheck.state = true
-	controls.regenCheck = new("CheckBoxControl", { "TOPLEFT", controls.clusterCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Require net positive regen", function(state)
-		self.requireRegen = state
-	end)
-	controls.regenCheck.state = true
 
-	controls.dualPhaseCheck = new("CheckBoxControl", { "TOPLEFT", controls.regenCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Dual phase: 60 main + 60 opposite (retain DPS)", function(state)
-		self.dualPhase = state
-	end)
-	controls.dualPhaseCheck.state = true
-	controls.jewelCheck = new("CheckBoxControl", { "TOPLEFT", controls.dualPhaseCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Reposition Split Personality (distance/zigzag)", function(state)
-		self.optimizeJewels = state
-	end)
-	controls.jewelCheck.state = true
-
-	controls.runButton = new("ButtonControl", { "TOPLEFT", controls.jewelCheck, "BOTTOMLEFT" }, { 0, 12, 140, 20 }, "Run 60+60", function()
-		local gens = tonumber(controls.generationsEdit.buf) or 60
-		controls.statusLabel.label = "Phase 1/2 (main DPS)..."
-		local result, err = self:Run({
-			archetype = self.selectedArchetype or "rf_arcane_devotion",
-			generations = gens,
-			population = tonumber(controls.populationEdit.buf) or 60,
-			useTradeItems = controls.tradeItemsCheck.state,
-			optimizeClusters = controls.clusterCheck.state,
-			requireRegen = controls.regenCheck.state,
-			dualPhase = controls.dualPhaseCheck.state,
-			optimizeJewels = controls.jewelCheck.state,
-			mutateJewelPaths = controls.jewelCheck.state,
-			onProgress = function(gen, best, phaseLabel)
-				controls.statusLabel.label = string.format("%s gen %d/%d — fitness %.2f", phaseLabel or "Main", gen, gens, best)
-			end,
-		})
-		if not result then
-			controls.statusLabel.label = "Error: " .. tostring(err)
-			return
-		end
-		local msg = string.format("Done — DPS %.0f, regen +%.0f/s", result.dps or 0, result.netRegen or 0)
-		if result.phase1 then
-			msg = msg .. string.format(" | P1 DPS %.0f", result.phase1.dps or 0)
-		end
-		if result.phase2 then
-			msg = msg .. string.format(" | P2 regen +%.0f", result.phase2.netRegen or 0)
-		end
-		controls.statusLabel.label = msg
-		build:SyncTree()
-		build:BuildAll()
-	end)
-
-	self.selectedArchetype = "rf_arcane_devotion"
-	self.useTradeItems = true
-	self.optimizeClusters = true
-	self.requireRegen = true
+	treeTab.controls.optTankButton = new("ButtonControl",
+		{ "LEFT", treeTab.controls.optDpsButton, "RIGHT" }, { 4, 0, 72, 20 }, "Opt Tank", function()
+			self:RunQuickOptimize(treeTab, "tank")
+		end)
 end
 
--- Hook into Build module after tree tab loads
-local oldBuildNew = nil
-function DeepOptimizer:HookBuild(build)
-	if build.treeTab and not build.treeTab._deepOptimizerHooked then
-		build.treeTab._deepOptimizerHooked = true
-		self:AddTreeTabButton(build.treeTab)
+function DeepOptimizer:HookBuild(build, treeTab)
+	treeTab = treeTab or (build and build.treeTab)
+	if not treeTab or treeTab._deepOptimizerHooked then
+		return
+	end
+	treeTab._deepOptimizerHooked = true
+	self:AddTreeTabButtons(treeTab)
+	if build then
+		self.headless:tryRun(build, self)
 	end
 end
 

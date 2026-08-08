@@ -1,4 +1,4 @@
-# Idempotent PoB patcher — copies optimizer modules and wires the Deep Optimize button (~1s).
+# Idempotent PoB patcher — copies optimizer modules and wires Opt DPS / Opt Tank buttons (~1s).
 param(
     [string]$PoBDir = $env:POB_PATH,
     [switch]$HeadlessOnly
@@ -61,4 +61,30 @@ New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
 Copy-Item -Force (Join-Path $RepoRoot "configs\optimizer-defaults.json") (Join-Path $settingsDir "deep_optimizer_defaults.json")
 
 Write-Host "localoptimizer installed to: $PoBDir"
+
+# Patch TreeTab.lua once — wires Opt DPS / Opt Tank buttons when a build opens
+$TreeTabMarker = "# localoptimizer-tree-tab-hook"
+$TreeTabLua = Join-Path $PoBDir "Classes\TreeTab.lua"
+if (Test-Path $TreeTabLua) {
+    $treeContent = Get-Content $TreeTabLua -Raw
+    if ($treeContent -notmatch [regex]::Escape($TreeTabMarker)) {
+        $treeHook = @"
+
+$TreeTabMarker
+if main and main.deepOptimizer then
+	main.deepOptimizer:HookBuild(build, self)
+end
+"@
+        if ($treeContent -match 'self\.controls\.powerReportList\.shown\s*=\s*false') {
+            $treeContent = $treeContent -replace '(self\.controls\.powerReportList\.shown\s*=\s*false)', "`$1`n$treeHook"
+            Set-Content -Path $TreeTabLua -Value $treeContent -NoNewline
+            Write-Host "Patched TreeTab.lua with Opt DPS / Opt Tank button hook."
+        } else {
+            Write-Warning "Could not auto-patch TreeTab.lua — buttons may not appear until manual hook is added."
+        }
+    }
+} else {
+    Write-Warning "TreeTab.lua not found — button hook skipped."
+}
+
 if ($HeadlessOnly) { exit 0 }

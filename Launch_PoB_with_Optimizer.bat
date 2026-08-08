@@ -7,7 +7,9 @@ rem  Patches PoB (~1s), optionally queues 60+60 dual-phase optimize, starts PoB.
 rem
 rem  Usage:
 rem    Launch_PoB_with_Optimizer.bat              Normal launch (patch + PoB)
-rem    Launch_PoB_with_Optimizer.bat optimize     Launch + queue 60 main + 60 opposite gens
+rem    Launch_PoB_with_Optimizer.bat optimize     Launch + queue 60+60 dual-phase optimize + start PoB
+rem    Launch_PoB_with_Optimizer.bat dps            Launch + queue Opt DPS (single phase)
+rem    Launch_PoB_with_Optimizer.bat tank           Launch + queue Opt Tank (single phase)
 rem    Launch_PoB_with_Optimizer.bat verify       Launch + load baseline build hint
 rem
 rem  Set POB_PATH if PoB is not at E:\Path of Building Community
@@ -36,14 +38,26 @@ if not exist "%POB_DIR%\Path of Building.exe" (
     exit /b 1
 )
 
-rem --- Queue dual-phase 60+60 optimize request when requested ---
+rem --- Queue optimize request when requested ---
 if /I "%MODE%"=="optimize" (
     echo Queueing dual-phase optimizer: 60 main ^(DPS^) + 60 opposite ^(regen/eHP^)...
     powershell -ExecutionPolicy Bypass -File "%REPO_DIR%scripts\run-headless.ps1" ^
-        -Archetype rf_arcane_devotion -Generations 60 -Population 60 -DualPhase
+        -Mode dual -Generations 60 -Population 60
     echo.
-    echo After PoB opens: load your RF build, go to Tree tab, click "Deep Optimize" or wait for auto-run.
+    echo After PoB opens: load your build, go to Tree tab, click Opt DPS / Opt Tank or wait for auto-run.
     echo Baseline for comparison: %REPO_DIR%builds\baseline_rf_arcane_devotion.pob.txt
+    echo.
+)
+
+if /I "%MODE%"=="dps" (
+    echo Queueing Opt DPS ^(single phase, max damage^)...
+    powershell -ExecutionPolicy Bypass -File "%REPO_DIR%scripts\run-headless.ps1" -Mode dps -Generations 60 -Population 60
+    echo.
+)
+
+if /I "%MODE%"=="tank" (
+    echo Queueing Opt Tank ^(single phase, max regen/eHP^)...
+    powershell -ExecutionPolicy Bypass -File "%REPO_DIR%scripts\run-headless.ps1" -Mode tank -Generations 60 -Population 60
     echo.
 )
 

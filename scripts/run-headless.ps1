@@ -3,6 +3,8 @@ param(
     [int]$Generations = 60,
     [int]$Population = 60,
     [string]$BuildName = "",
+    [ValidateSet("dps", "tank", "dual")]
+    [string]$Mode = "dual",
     [switch]$NoTradeItems,
     [switch]$SkipClusters,
     [switch]$DualPhase,
@@ -20,7 +22,22 @@ if (-not $PoBDir) { $PoBDir = "E:\Path of Building Community" }
 $settingsDir = Join-Path $env:APPDATA "Path of Building\Settings"
 $headlessConfig = Join-Path $settingsDir "headless_optimizer_request.json"
 
-if (-not $PSBoundParameters.ContainsKey('DualPhase')) { $DualPhase = $true }
+if ($Mode -eq "dps") {
+    $Archetype = "generic_dps"
+    $DualPhase = $false
+    $singlePhase = "main"
+    $requireRegen = $false
+} elseif ($Mode -eq "tank") {
+    $Archetype = "generic_tanky"
+    $DualPhase = $false
+    $singlePhase = "opposite"
+    $requireRegen = $true
+} else {
+    if (-not $PSBoundParameters.ContainsKey('DualPhase')) { $DualPhase = $true }
+    $singlePhase = $null
+    $requireRegen = $true
+}
+
 if (-not $PSBoundParameters.ContainsKey('OptimizeJewels')) { $OptimizeJewels = $true }
 
 $request = @{
@@ -28,11 +45,12 @@ $request = @{
     generations = $Generations
     population = $Population
     dualPhase = [bool]$DualPhase
+    singlePhase = $singlePhase
     useTradeItems = (-not $NoTradeItems)
     optimizeClusters = (-not $SkipClusters)
     optimizeJewels = [bool]$OptimizeJewels
     mutateJewelPaths = [bool]$OptimizeJewels
-    requireRegen = $true
+    requireRegen = [bool]$requireRegen
     buildName = $BuildName
     baselinePath = (Join-Path $RepoRoot "builds\baseline_rf_arcane_devotion.pob.txt")
     timestamp = (Get-Date -Format "o")
@@ -42,15 +60,17 @@ New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
 Set-Content -Path $headlessConfig -Value $request
 
 Write-Host "localoptimizer headless request queued."
+Write-Host "  Mode:        $Mode"
 Write-Host "  Archetype:   $Archetype"
-Write-Host "  Phase 1:     $Generations gens x $Population pop (main: max DPS/mana)"
+Write-Host "  Generations: $Generations x $Population"
 if ($DualPhase) {
     Write-Host "  Phase 2:     $Generations gens x $Population pop (opposite: regen/eHP, retain DPS floor)"
+} elseif ($singlePhase) {
+    Write-Host "  Single phase: $singlePhase"
 }
 Write-Host "  Trade pool:  $(-not $NoTradeItems)"
 Write-Host "  Clusters:    $(-not $SkipClusters)"
 Write-Host "  SP jewels:   $OptimizeJewels"
-Write-Host "  Baseline:    builds\baseline_rf_arcane_devotion.pob.txt"
 Write-Host ""
 Write-Host "Config: $headlessConfig"
 

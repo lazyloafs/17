@@ -153,13 +153,31 @@ function Engine:runPhase(build, spec, archetype, options, phase, seedPopulation)
 	return population[1], population
 end
 
+function Engine:currentNodes(spec)
+	local nodes = {}
+	for nodeId in pairs(spec.allocNodes) do
+		nodes[nodeId] = true
+	end
+	return nodes
+end
+
+function Engine:finalize(build, finalBest, archetype, options)
+	self:applyTree(build, finalBest.nodes)
+	jewelOpt:optimize(build, archetype, { mutateJewelPaths = true, optimizeJewels = options.optimizeJewels ~= false })
+	if options.optimizeClusters then clusterOpt:optimize(build, archetype, options) end
+	if options.useTradeItems then itemPool:apply(build, archetype.itemPool or "trade_329_rf") end
+	build:BuildAll()
+	build:SyncTree()
+end
+
 function Engine:optimize(build, options)
 	options = options or {}
 	local archetypeName = options.archetype or "rf_arcane_devotion"
 	local archetype = self:loadArchetype(archetypeName)
 	local generations = options.generations or self.defaults.generations or 60
 	local populationSize = options.population or self.defaults.population or 60
-	local dualPhase = options.dualPhase ~= false
+	local singlePhase = options.singlePhase
+	local dualPhase = options.dualPhase ~= false and not singlePhase
 
 	options.generations = generations
 	options.population = populationSize
@@ -168,20 +186,40 @@ function Engine:optimize(build, options)
 	math.randomseed(os.time())
 	local spec = build.spec
 
-	-- Phase 1: main objective (max DPS / mana scaling)
-	local phase1Best, phase1Pop = self:runPhase(build, spec, archetype, options, "main", nil)
-	local phase1Floor = {
-		dps = phase1Best.detail.dps,
-		netRegen = phase1Best.detail.netRegen,
-		ehp = phase1Best.detail.ehp,
-		nodes = phase1Best.nodes,
-	}
+	local phase1Best, phase1Pop, phase1Floor, phase2Best, finalBest
 
-	local finalBest = phase1Best
-	local phase2Best = nil
+	if singlePhase == "opposite" then
+		local current = self:currentNodes(spec)
+		local baseline = self:evaluate(build, current, archetype, { phase = "main" })
+		options.phase1Floor = {
+			dps = baseline.dps,
+			netRegen = baseline.netRegen,
+			ehp = baseline.ehp,
+			nodes = current,
+		}
+		local seedPop = { { nodes = current, fitness = baseline.total, detail = baseline } }
+		phase2Best, _ = self:runPhase(build, spec, archetype, options, "opposite", seedPop)
+		finalBest = phase2Best
+		phase1Floor = options.phase1Floor
+	elseif singlePhase == "main" or not dualPhase then
+		phase1Best, phase1Pop = self:runPhase(build, spec, archetype, options, "main", nil)
+		phase1Floor = {
+			dps = phase1Best.detail.dps,
+			netRegen = phase1Best.detail.netRegen,
+			ehp = phase1Best.detail.ehp,
+			nodes = phase1Best.nodes,
+		}
+		finalBest = phase1Best
+	else
+		phase1Best, phase1Pop = self:runPhase(build, spec, archetype, options, "main", nil)
+		phase1Floor = {
+			dps = phase1Best.detail.dps,
+			netRegen = phase1Best.detail.netRegen,
+			ehp = phase1Best.detail.ehp,
+			nodes = phase1Best.nodes,
+		}
+		finalBest = phase1Best
 
-	if dualPhase then
-		-- Phase 2: opposite objective (regen/eHP) seeded from phase-1 elites — retains DPS floor
 		local phase2Options = {}
 		for k, v in pairs(options) do phase2Options[k] = v end
 		phase2Options.phase1Floor = phase1Floor
@@ -190,29 +228,22 @@ function Engine:optimize(build, options)
 		if phase2Best.detail.dps >= phase1Floor.dps * (archetype.dpsRetainRatio or 0.92) then
 			finalBest = phase2Best
 		else
-			-- Keep phase-1 tree if phase-2 lost too much DPS
 			finalBest = phase1Best
 		end
 	end
 
-	-- Final jewel reposition pass (split personality distance / zigzag)
-	self:applyTree(build, finalBest.nodes)
-	jewelOpt:optimize(build, archetype, { mutateJewelPaths = true, optimizeJewels = true })
-	if options.optimizeClusters then clusterOpt:optimize(build, archetype, options) end
-	if options.useTradeItems then itemPool:apply(build, archetype.itemPool or "trade_329_rf") end
-	build:BuildAll()
-	build:SyncTree()
+	self:finalize(build, finalBest, archetype, options)
 
 	return {
 		fitness = finalBest.fitness,
 		dps = finalBest.detail.dps,
 		netRegen = finalBest.detail.netRegen,
 		ehp = finalBest.detail.ehp,
-		phase1 = {
+		phase1 = phase1Floor and {
 			dps = phase1Floor.dps,
 			netRegen = phase1Floor.netRegen,
 			ehp = phase1Floor.ehp,
-		},
+		} or nil,
 		phase2 = phase2Best and {
 			dps = phase2Best.detail.dps,
 			netRegen = phase2Best.detail.netRegen,
@@ -221,6 +252,7 @@ function Engine:optimize(build, options)
 		generations = generations,
 		population = populationSize,
 		dualPhase = dualPhase,
+		singlePhase = singlePhase,
 		nodes = finalBest.nodes,
 	}
 end
