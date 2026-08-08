@@ -44,7 +44,7 @@ function DeepOptimizer:AddTreeTabButton(treeTab)
 	treeTab.controls = treeTab.controls or {}
 	treeTab.controls.deepOptimizeButton = new("ButtonControl", {
 		"TREE", "DeepOptimize",
-	}, "12", "Deep Optimize", function()
+	}, "12", "Deep Optimize (local)", function()
 		self:ShowOptimizeDialog(treeTab)
 	end)
 end
@@ -53,9 +53,9 @@ function DeepOptimizer:ShowOptimizeDialog(treeTab)
 	local build = treeTab.build
 	local defaults = self.engine.defaults or {}
 	local controls = {}
-	local status = "Ready — 60 main + 60 opposite gens."
+	local status = "Local — no time limit. Runs all gens to completion."
 
-	controls.statusLabel = new("LabelControl", { "TOPLEFT", controls, "TOPLEFT" }, { 0, 20, 420, 16 }, status)
+	controls.statusLabel = new("LabelControl", { "TOPLEFT", controls, "TOPLEFT" }, { 0, 20, 460, 16 }, status)
 	controls.archetypeList = new("DropDownControl", { "TOPLEFT", controls.statusLabel, "BOTTOMLEFT" }, { 0, 8, 220, 20 },
 		{ "rf_arcane_devotion", "generic_dps", "generic_tanky" }, function(index, value)
 			self.selectedArchetype = value
@@ -90,10 +90,12 @@ function DeepOptimizer:ShowOptimizeDialog(treeTab)
 		self.preferZigzag = state
 	end)
 	controls.zigzagCheck.state = true
+	controls.timeNote = new("LabelControl", { "TOPLEFT", controls.zigzagCheck, "BOTTOMLEFT" }, { 0, 8, 420, 16 },
+		"No wall-clock time limit (local). Stops only when all generations finish.")
 
-	controls.runButton = new("ButtonControl", { "TOPLEFT", controls.zigzagCheck, "BOTTOMLEFT" }, { 0, 12, 160, 20 }, "Run 60+60", function()
+	controls.runButton = new("ButtonControl", { "TOPLEFT", controls.timeNote, "BOTTOMLEFT" }, { 0, 12, 220, 20 }, "Run 60+60 (no time limit)", function()
 		local gens = tonumber(controls.generationsEdit.buf) or 60
-		controls.statusLabel.label = "Phase 1/2 (main DPS)..."
+		controls.statusLabel.label = "Phase 1/2 (main DPS) — no time limit..."
 		local result, err = self:Run({
 			archetype = self.selectedArchetype or "rf_arcane_devotion",
 			generations = gens,
@@ -105,10 +107,12 @@ function DeepOptimizer:ShowOptimizeDialog(treeTab)
 			optimizeJewels = controls.jewelCheck.state,
 			mutateJewelPaths = controls.jewelCheck.state,
 			preferZigzagPaths = controls.zigzagCheck.state,
+			noTimeLimit = true,
+			timeLimitSeconds = nil,
 			phase1EliteCarryover = (defaults.phase1EliteCarryover or 12),
 			phase2MutationRate = (defaults.phase2MutationRate or 0.20),
 			onProgress = function(gen, best, phaseLabel)
-				controls.statusLabel.label = string.format("%s gen %d/%d — fitness %.2f", phaseLabel or "Main", gen, gens, best)
+				controls.statusLabel.label = string.format("%s gen %d/%d — fitness %.2f (local, unlimited)", phaseLabel or "Main", gen, gens, best)
 			end,
 		})
 		if not result then

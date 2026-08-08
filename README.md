@@ -32,6 +32,8 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-to-github.ps1
 
 Phase 2 is seeded from the top **12 phase-1 elites** so first-objective progress is not lost. If phase 2 drops below the DPS floor, the engine keeps the phase-1 tree.
 
+**Local Deep Optimize has no wall-clock time limit** — unlike cloud/web optimizers, the button runs every generation to completion (`noTimeLimit: true`).
+
 ## Complete tree mutation
 
 - Connected growth from class start (no disconnected random nodes)

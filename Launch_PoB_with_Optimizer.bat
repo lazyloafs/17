@@ -84,6 +84,7 @@ if /I "%MODE%"=="optimize" (
     echo   Phase 1: 60 gens x 60 pop  — main objective ^(max DPS / mana^)
     echo   Phase 2: 60 gens x 60 pop  — opposite ^(regen/eHP^), retain ^>=92%% phase-1 DPS
     echo   Tree:    connected mutation + skill-point budget + SP zigzag sockets
+    echo   Time:    NO wall-clock limit ^(local — finishes all generations^)
     echo.
     powershell -ExecutionPolicy Bypass -File "%REPO_DIR%scripts\run-headless.ps1" ^
         -Archetype rf_arcane_devotion -Generations 60 -Population 60 -DualPhase -OptimizeJewels

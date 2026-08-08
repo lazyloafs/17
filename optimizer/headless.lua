@@ -31,6 +31,9 @@ function Headless:tryRun(build, deepOptimizer)
 		requireRegen = req.requireRegen ~= false,
 		phase1EliteCarryover = req.phase1EliteCarryover or 12,
 		phase2MutationRate = req.phase2MutationRate or 0.20,
+		-- Local runs never use a wall-clock time limit
+		noTimeLimit = req.noTimeLimit ~= false,
+		timeLimitSeconds = nil,
 		headless = true,
 	})
 

@@ -143,6 +143,20 @@ function Engine:runPhase(build, spec, archetype, options, phase, seedPopulation)
 	local eliteCount = options.eliteCount or self.defaults.eliteCount or 6
 	local rng = math.random
 
+	-- Local Deep Optimize: never abort on wall-clock time. Cloud/web optimizers
+	-- often cap runtime; this button must finish every generation.
+	local noTimeLimit = options.noTimeLimit
+	if noTimeLimit == nil then
+		noTimeLimit = self.defaults.noTimeLimit
+	end
+	if noTimeLimit == nil then noTimeLimit = true end
+	-- Explicitly ignore any inherited time budget when running locally
+	local timeLimitSeconds = nil
+	if not noTimeLimit then
+		timeLimitSeconds = options.timeLimitSeconds or self.defaults.timeLimitSeconds
+	end
+	local startedAt = os.clock()
+
 	local phaseOptions = {}
 	for k, v in pairs(options) do phaseOptions[k] = v end
 	phaseOptions.phase = phase
@@ -181,8 +195,18 @@ function Engine:runPhase(build, spec, archetype, options, phase, seedPopulation)
 
 	local best = population[1]
 	local phaseLabel = phase == "main" and "DPS" or "Regen/EHP"
+	local stoppedEarly = false
 
 	for g = 1, generations do
+		-- Only honor a time limit when noTimeLimit is explicitly false (non-local)
+		if timeLimitSeconds and (os.clock() - startedAt) >= timeLimitSeconds then
+			stoppedEarly = true
+			if options.onProgress then
+				options.onProgress(g, best.fitness, phaseLabel .. " (time cap)")
+			end
+			break
+		end
+
 		table.sort(population, function(x, y) return x.fitness > y.fitness end)
 		if population[1].fitness > (best.fitness or 0) then best = population[1] end
 		if options.onProgress then
@@ -207,7 +231,13 @@ function Engine:runPhase(build, spec, archetype, options, phase, seedPopulation)
 	end
 
 	table.sort(population, function(x, y) return x.fitness > y.fitness end)
-	return population[1], population
+	local top = population[1]
+	if top then
+		top.stoppedEarly = stoppedEarly
+		top.elapsedSeconds = os.clock() - startedAt
+		top.noTimeLimit = noTimeLimit
+	end
+	return top, population
 end
 
 function Engine:writeReport(result, options)
@@ -260,6 +290,14 @@ function Engine:optimize(build, options)
 	options.eliteCount = options.eliteCount or self.defaults.eliteCount
 	options.phase1EliteCarryover = options.phase1EliteCarryover or self.defaults.phase1EliteCarryover or 12
 	options.phase2MutationRate = options.phase2MutationRate or self.defaults.phase2MutationRate or 0.20
+	-- Local button default: no wall-clock time limit (run all generations)
+	if options.noTimeLimit == nil then
+		options.noTimeLimit = self.defaults.noTimeLimit
+	end
+	if options.noTimeLimit == nil then options.noTimeLimit = true end
+	if options.noTimeLimit then
+		options.timeLimitSeconds = nil
+	end
 
 	math.randomseed(os.time())
 	local spec = build.spec
@@ -330,6 +368,8 @@ function Engine:optimize(build, options)
 		generations = generations,
 		population = populationSize,
 		dualPhase = dualPhase,
+		noTimeLimit = options.noTimeLimit ~= false,
+		timeLimitSeconds = nil,
 		nodes = finalBest.nodes,
 	}
 	self:writeReport(result, options)

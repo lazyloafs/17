@@ -38,6 +38,8 @@ $request = @{
     mutateJewelPaths = [bool]$OptimizeJewels
     preferZigzagPaths = (-not $NoZigzag)
     requireRegen = $true
+    noTimeLimit = $true
+    timeLimitSeconds = $null
     phase1EliteCarryover = $Phase1EliteCarryover
     phase2MutationRate = $Phase2MutationRate
     buildName = $BuildName
@@ -56,7 +58,7 @@ $request = @{
 
 New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
 Set-Content -Path $headlessConfig -Value $request
-Add-Content -Path $logPath -Value ("{0} queued dualPhase={1} gens={2} pop={3} jewels={4}" -f (Get-Date -Format "o"), $DualPhase, $Generations, $Population, $OptimizeJewels)
+Add-Content -Path $logPath -Value ("{0} queued dualPhase={1} gens={2} pop={3} jewels={4} noTimeLimit=true" -f (Get-Date -Format "o"), $DualPhase, $Generations, $Population, $OptimizeJewels)
 
 Write-Host "localoptimizer headless request queued."
 Write-Host "  Archetype:   $Archetype"
@@ -65,6 +67,7 @@ if ($DualPhase) {
     Write-Host "  Phase 2:     $Generations gens x $Population pop (opposite: regen/eHP, retain DPS floor)"
     Write-Host "  Carryover:   $Phase1EliteCarryover phase-1 elites into phase 2"
 }
+Write-Host "  Time limit:  none (local — runs all generations to completion)"
 Write-Host "  Trade pool:  $(-not $NoTradeItems)"
 Write-Host "  Clusters:    $(-not $SkipClusters)"
 Write-Host "  SP jewels:   $OptimizeJewels (zigzag=$(-not $NoZigzag))"

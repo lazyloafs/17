@@ -78,10 +78,12 @@ def test_dual_phase_defaults():
     assert cfg["dualPhase"] is True
     assert cfg["phase1EliteCarryover"] == 12
     assert cfg["preferZigzagPaths"] is True
+    assert cfg["noTimeLimit"] is True
+    assert cfg.get("timeLimitSeconds") is None
     arch = json.loads((ROOT / "configs/archetypes/rf_arcane_devotion.json").read_text())
     assert arch["dpsRetainRatio"] == 0.92
     assert arch["optimizeSplitPersonality"] is True
-    print("OK: dual-phase 60+60 defaults + RF archetype retain ratio")
+    print("OK: dual-phase 60+60 defaults + no local time limit + RF archetype retain ratio")
 
 
 def test_baseline_verify_script():
