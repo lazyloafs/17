@@ -24,6 +24,9 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-to-github.ps1
 | `Launch_PoB_with_Optimizer.bat optimize` | Patch + queue **60+60 dual-phase** optimize + start PoB |
 | `Launch_PoB_with_Optimizer.bat verify` | Decode/validate baseline + open PoB code for before/after |
 | `Launch_PoB_with_Optimizer.bat status` | Show queued request + last result + recent log |
+| `Put_Launcher_on_Desktop.bat` | Place **Launch PoB with Optimizer.bat** on your Desktop |
+
+If a console titled **NSGA-II Opt DPS** shows `Time budget: 600 seconds`, that is a **different** optimizer. Use the Desktop / `Launch_PoB_with_Optimizer.bat` launcher from this repo instead.
 
 ## Dual-phase 60+60 optimizer
 

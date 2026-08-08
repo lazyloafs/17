@@ -5,11 +5,16 @@ rem ============================================================================
 rem  Launch PoB with Optimizer — localoptimizer
 rem  Patches PoB (~1s), optionally queues 60+60 dual-phase optimize, starts PoB.
 rem
+rem  THIS is the correct local launcher (NO 600-second time budget).
+rem  If you see "Time budget: 600 seconds" / "NSGA-II Opt DPS", you started
+rem  a different optimizer .bat — use this file (or the Desktop copy) instead.
+rem
 rem  Usage:
 rem    Launch_PoB_with_Optimizer.bat              Patch + start PoB
 rem    Launch_PoB_with_Optimizer.bat optimize     Patch + queue 60 main + 60 opposite gens + start
 rem    Launch_PoB_with_Optimizer.bat verify       Patch + decode/validate baseline + open code
 rem    Launch_PoB_with_Optimizer.bat status       Show last optimizer result / queued request
+rem    Launch_PoB_with_Optimizer.bat desktop      Copy this launcher to your Desktop
 rem
 rem  Set POB_PATH if PoB is not at E:\Path of Building Community
 rem ============================================================================
@@ -17,6 +22,12 @@ rem ============================================================================
 set "REPO_DIR=%~dp0"
 set "MODE=%~1"
 if "%MODE%"=="" set "MODE=launch"
+
+rem --- One-shot: install Desktop launcher stub ---
+if /I "%MODE%"=="desktop" (
+    call "%REPO_DIR%Put_Launcher_on_Desktop.bat"
+    exit /b %ERRORLEVEL%
+)
 
 set "SETTINGS=%APPDATA%\Path of Building\Settings"
 if not exist "%SETTINGS%" mkdir "%SETTINGS%"
