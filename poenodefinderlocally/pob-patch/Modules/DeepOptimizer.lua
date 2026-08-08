@@ -7,7 +7,13 @@ DeepOptimizer.__index = DeepOptimizer
 function DeepOptimizer:Init(buildModule)
 	self.buildModule = buildModule
 	self.engine = dofile(MainScriptPath .. "DeepOptimizer/engine.lua")
+	self.headless = dofile(MainScriptPath .. "DeepOptimizer/headless.lua")
 	self.engine:loadDefaults(MainScriptPath .. "DeepOptimizer/configs/optimizer-defaults.json")
+	-- Process pending headless request if Launch_Headless_Optimizer.bat was used
+	local build = self:GetActiveBuild()
+	if build then
+		self.headless:tryRun(build, self)
+	end
 end
 
 function DeepOptimizer:GetActiveBuild()
