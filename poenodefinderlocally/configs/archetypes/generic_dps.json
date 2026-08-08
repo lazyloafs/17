@@ -1,0 +1,9 @@
+{
+  "name": "generic_dps",
+  "skillPoints": 120,
+  "itemPool": "trade_329_rf",
+  "weights": { "dps": 1.0, "regen": 0.1, "ehp": 0.00005, "mana": 0.001, "fireRes": 0.3 },
+  "minFireRes": 75,
+  "mandatoryNodes": [],
+  "bonusKeystones": []
+}
