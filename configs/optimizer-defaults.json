@@ -1,0 +1,29 @@
+{
+  "generations": 60,
+  "population": 60,
+  "tournamentSize": 5,
+  "mutationRate": 0.15,
+  "phase2MutationRate": 0.20,
+  "eliteCount": 6,
+  "phase1EliteCarryover": 12,
+  "dualPhase": true,
+  "preferZigzagPaths": true,
+  "optimizeJewels": true,
+  "noTimeLimit": true,
+  "timeLimitSeconds": null,
+  "description": "LOCAL Deep Optimize has no wall-clock time limit — runs all gens to completion. 60 main + 60 opposite objective gens (retain phase-1 DPS floor via elite carryover). Complete tree mutation with connectivity repair, skill-point budget, and Split Personality zigzag repositioning.",
+  "phases": {
+    "main": "Maximize DPS / mana scaling (RF Arcane Devotion spell damage) — 60 gens × 60 pop",
+    "opposite": "Maximize regen + eHP while retaining >=92% phase-1 DPS — 60 gens × 60 pop seeded from phase-1 elites"
+  },
+  "splitPersonality": {
+    "rule": "25% increased effect per Allocated Passive Skill between jewel and class start",
+    "strategy": "Place SP jewels on farthest sockets; prefer zigzag (longer allocated path) over shortest path when it increases path length"
+  },
+  "archetypes": {
+    "generic": {
+      "skillPoints": 121,
+      "weights": { "dps": 1.0, "regen": 0.2, "ehp": 0.0001 }
+    }
+  }
+}
