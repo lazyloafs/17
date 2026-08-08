@@ -8,6 +8,14 @@ Standalone **Path of Building** launcher and deep passive-tree optimizer for loc
 2. Set `POB_PATH` if needed (default: `E:\Path of Building Community`)
 3. Run **`Launch_PoB_with_Optimizer.bat`**
 
+If the GitHub repo does not exist yet, create an empty public repo named `localoptimizer` under your account, then from this folder run:
+
+```bat
+powershell -ExecutionPolicy Bypass -File scripts\publish-to-github.ps1
+```
+
+(or `bash scripts/publish-to-github.sh` on Linux/macOS with `gh` auth).
+
 ### Launcher modes
 
 | Command | What it does |
