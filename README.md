@@ -1,90 +1,44 @@
-# poenodefinderlocally
+# localoptimizer
 
-Standalone **Path of Building** launcher and deep passive-tree optimizer. No Electron — just a batch launcher, PowerShell patcher, and Lua engine that lives inside your local PoB install.
+Standalone **Path of Building** launcher and deep passive-tree optimizer for local saves. No Electron — batch launcher + PowerShell patcher + Lua engine inside PoB.
 
-## Quick start (Windows)
+## Quick start
 
-1. Clone this repo anywhere (e.g. next to your PoB folder).
-2. Set `POB_PATH` to your Path of Building Community folder (optional; defaults to `E:\Path of Building Community`).
-3. Double-click **`Launch_PoB_with_Optimizer.bat`** — patches PoB (~1s) and opens it with the **Deep Optimize** button on the Tree tab.
-4. Load your RF Arcane Devotion build (or any build), pick archetype, click **Run 60/60**.
+1. Clone: `git clone https://github.com/lazyloafs/localoptimizer`
+2. Set `POB_PATH` if needed (default: `E:\Path of Building Community`)
+3. Run **`Launch_PoB_with_Optimizer.bat`**
 
-For headless-style runs (config file + auto-start PoB):
+### Launcher modes
 
-```bat
-Launch_Headless_Optimizer.bat
-```
+| Command | What it does |
+|---------|----------------|
+| `Launch_PoB_with_Optimizer.bat` | Patch PoB + start (daily use) |
+| `Launch_PoB_with_Optimizer.bat optimize` | Patch + queue **60+60 dual-phase** optimize + start PoB |
+| `Launch_PoB_with_Optimizer.bat verify` | Patch + open baseline PoB code for before/after comparison |
 
-Or with options:
+## Dual-phase 60+60 optimizer
 
-```powershell
-.\scripts\run-headless.ps1 -Archetype rf_arcane_devotion -Generations 60 -Population 60
-```
+1. **Phase 1 (60 gens × 60 pop)** — Main objective: max DPS / mana scaling for RF Arcane Devotion
+2. **Phase 2 (60 gens × 60 pop)** — Opposite objective: max regen + eHP, **retaining ≥92% phase-1 DPS**
 
-## What this is
+Seeded from phase-1 elites so progress is not lost.
 
-| Component | Purpose |
-|-----------|---------|
-| `Launch_PoB_with_Optimizer.bat` | Your daily launcher — re-applies patch then starts PoB |
-| `install-button.ps1` | Idempotent patcher; survives PoB updates |
-| `optimizer/*.lua` | Deep GA engine copied into PoB's `DeepOptimizer/` folder |
-| `pob-patch/Modules/DeepOptimizer.lua` | Tree-tab UI + hook into Build module |
-| `configs/` | Archetypes, trade item pools, 60/60 defaults |
+## Other engine features
 
-## Deep optimizer engine (3.29)
+- Tournament selection (k=5), full tree mutation, cluster SP routing
+- **Split Personality repositioning** — farthest sockets from class start; zigzag path scoring
+- Non-self-owned trade item pool (`trade_329_rf.json`)
+- Net positive regen constraint after RF self-burn
 
-Improvements consolidated from POEMOOTREES / tournament RF Hiero runs:
+## Verification baseline
 
-- **60/60 genetic algorithm** — 60 generations × 60 population (configurable)
-- **Tournament selection** — k=5 (configurable in `optimizer-defaults.json`)
-- **Non-self-owned item pool** — `trade_329_rf.json` endgame trade gear (Indigon, Ivory Tower, clusters, etc.)
-- **Cluster SP optimization** — routes large cluster jewel notables (Burning/Fire/Mana smalls)
-- **Net positive regen constraint** — penalizes candidates that don't sustain RF self-burn
-- **RF Arcane Devotion archetype** — mana/int weights, Zealot's Oath + Eternal Youth keystones, Brand Mastery mana recovery
+Import `builds/baseline_rf_arcane_devotion.pob.txt` in PoB before running **Run 60+60** on the Tree tab. Compare Total DPS and net regen after optimize.
 
-### Archetypes
+## In PoB
 
-- `rf_arcane_devotion` — Hierophant mana-RF (default)
-- `generic_dps` / `generic_tanky` — fallbacks in UI dropdown
+Tree tab → **Deep Optimize** → configure → **Run 60+60**
 
-Edit `configs/archetypes/rf_arcane_devotion.json` to tune weights and mandatory nodes.
-
-## Tournament baselines beaten
-
-Engine targets stats from validated community PoBs:
-
-| Source | DPS | ES | Mana | Regen |
-|--------|-----|-----|------|-------|
-| pobb.in/_iQlQzqWeBt2 (3.26 LL) | ~10.1M | 15k | 16k | positive |
-| pobb.in/TBU2eeoGDUVr (Arch) | ~17M | 22k | 16.7k | positive |
-| pobb.in/VzC1OQLG0KEL (3.27) | ~22M | — | — | positive |
-
-Run **Deep Optimize** with trade pool + clusters enabled to push past these on your local save.
-
-## Install location after patch
-
-```
-Path of Building Community/
-├── Modules/DeepOptimizer.lua      ← UI module
-├── DeepOptimizer/
-│   ├── engine.lua
-│   ├── tournament.lua
-│   ├── cluster_optimizer.lua
-│   ├── item_pool.lua
-│   ├── fitness.lua
-│   └── configs/
-└── Modules/Build.lua              ← patched once (marker comment)
-```
-
-## Re-install after PoB update
-
-Just run `Launch_PoB_with_Optimizer.bat` again — `install-button.ps1` is idempotent.
-
-Clone from: https://github.com/lazyloafs/poenodefinderlocally
-
-## Not affiliated with GGG
-
-Fan-made tool. Path of Building Community is maintained separately.
+Options: trade pool, clusters, dual phase, Split Personality reposition.
 
 ## License
 

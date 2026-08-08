@@ -3,11 +3,16 @@
   "population": 60,
   "tournamentSize": 5,
   "mutationRate": 0.15,
-  "eliteCount": 4,
-  "description": "60/60 GA with tournament selection — validated against RF Hiero tournament runs",
+  "eliteCount": 6,
+  "dualPhase": true,
+  "description": "60 main objective gens + 60 opposite objective gens (retain phase-1 DPS floor). Tournament selection.",
+  "phases": {
+    "main": "Maximize DPS / mana scaling (RF Arcane Devotion spell damage)",
+    "opposite": "Maximize regen + eHP while retaining >=92% phase-1 DPS"
+  },
   "archetypes": {
     "generic": {
-      "skillPoints": 120,
+      "skillPoints": 121,
       "weights": { "dps": 1.0, "regen": 0.2, "ehp": 0.0001 }
     }
   }

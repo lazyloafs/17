@@ -14,7 +14,7 @@ if (-not (Test-Path $PoBDir)) {
     Write-Error "PoB not found at '$PoBDir'. Set POB_PATH to your Path of Building Community folder."
 }
 
-$Marker = "# poenodefinderlocally-deep-optimizer"
+$Marker = "# localoptimizer-deep-optimizer"
 $BuildLua = Join-Path $PoBDir "Modules\Build.lua"
 $DestModule = Join-Path $PoBDir "Modules\DeepOptimizer.lua"
 $DestEngine = Join-Path $PoBDir "DeepOptimizer"
@@ -24,6 +24,9 @@ New-Item -ItemType Directory -Force -Path $DestEngine | Out-Null
 Copy-Item -Force (Join-Path $RepoRoot "optimizer\*") $DestEngine
 Copy-Item -Force (Join-Path $RepoRoot "pob-patch\Modules\DeepOptimizer.lua") $DestModule
 Copy-Item -Force -Recurse (Join-Path $RepoRoot "configs") (Join-Path $PoBDir "DeepOptimizer\configs")
+if (Test-Path (Join-Path $RepoRoot "builds")) {
+    Copy-Item -Force -Recurse (Join-Path $RepoRoot "builds") (Join-Path $PoBDir "DeepOptimizer\builds")
+}
 
 # Patch Build.lua once
 if (Test-Path $BuildLua) {
@@ -57,5 +60,5 @@ $settingsDir = Join-Path $env:APPDATA "Path of Building\Settings"
 New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
 Copy-Item -Force (Join-Path $RepoRoot "configs\optimizer-defaults.json") (Join-Path $settingsDir "deep_optimizer_defaults.json")
 
-Write-Host "poenodefinderlocally optimizer installed to: $PoBDir"
+Write-Host "localoptimizer installed to: $PoBDir"
 if ($HeadlessOnly) { exit 0 }

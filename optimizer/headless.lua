@@ -22,8 +22,11 @@ function Headless:tryRun(build, deepOptimizer)
 		archetype = req.archetype or "rf_arcane_devotion",
 		generations = req.generations or 60,
 		population = req.population or 60,
+		dualPhase = req.dualPhase ~= false,
 		useTradeItems = req.useTradeItems ~= false,
 		optimizeClusters = req.optimizeClusters ~= false,
+		optimizeJewels = req.optimizeJewels ~= false,
+		mutateJewelPaths = req.mutateJewelPaths ~= false,
 		requireRegen = req.requireRegen ~= false,
 		headless = true,
 	})

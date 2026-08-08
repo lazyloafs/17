@@ -1,9 +1,12 @@
--- engine.lua — Deep optimizer core (60/60 GA + tournament selection + cluster SP)
+-- engine.lua — Dual-phase 60+60 GA: main objective then opposite while retaining phase-1 progress
+
 local json = require("dkjson")
 local tournament = dofile(MainScriptPath .. "DeepOptimizer/tournament.lua")
 local clusterOpt = dofile(MainScriptPath .. "DeepOptimizer/cluster_optimizer.lua")
 local itemPool = dofile(MainScriptPath .. "DeepOptimizer/item_pool.lua")
 local fitness = dofile(MainScriptPath .. "DeepOptimizer/fitness.lua")
+local treeMut = dofile(MainScriptPath .. "DeepOptimizer/tree_mutation.lua")
+local jewelOpt = dofile(MainScriptPath .. "DeepOptimizer/jewel_optimizer.lua")
 
 local Engine = {}
 Engine.__index = Engine
@@ -15,9 +18,7 @@ function Engine:loadDefaults(path)
 		local raw = f:read("*a")
 		f:close()
 		local ok, data = pcall(json.decode, raw)
-		if ok and data then
-			self.defaults = data
-		end
+		if ok and data then self.defaults = data end
 	end
 end
 
@@ -31,15 +32,6 @@ function Engine:loadArchetype(name)
 	f:close()
 	local ok, data = pcall(json.decode, raw)
 	return (ok and data) or {}
-end
-
-function Engine:snapshotTree(build)
-	local spec = build.spec
-	local nodes = {}
-	for nodeId in pairs(spec.allocNodes or spec.nodes or {}) do
-		nodes[nodeId] = true
-	end
-	return nodes
 end
 
 function Engine:applyTree(build, nodes)
@@ -56,16 +48,18 @@ function Engine:evaluate(build, nodes, archetype, options)
 		clusterOpt:optimize(build, archetype, options)
 	end
 	if options.useTradeItems then
-		itemPool:apply(build, archetype.itemPool or "trade_329")
+		itemPool:apply(build, archetype.itemPool or "trade_329_rf")
+	end
+	if options.optimizeJewels ~= false then
+		jewelOpt:optimize(build, archetype, options)
 	end
 	build:BuildAll()
 	return fitness:score(build, archetype, options)
 end
 
-function Engine:randomIndividual(spec, archetype, rng)
+function Engine:randomIndividual(spec, archetype, rng, seedNodes)
 	local nodes = {}
-	local seedNodes = archetype.mandatoryNodes or {}
-	for _, id in ipairs(seedNodes) do
+	for _, id in ipairs(seedNodes or archetype.mandatoryNodes or {}) do
 		nodes[id] = true
 	end
 	local candidates = {}
@@ -74,11 +68,10 @@ function Engine:randomIndividual(spec, archetype, rng)
 			table.insert(candidates, nodeId)
 		end
 	end
-	local budget = (archetype.skillPoints or 120) - self:countNodes(nodes)
+	local budget = (archetype.skillPoints or 121) - self:countNodes(nodes)
 	for _ = 1, math.max(0, budget) do
 		if #candidates == 0 then break end
-		local idx = rng:random(1, #candidates)
-		local pick = table.remove(candidates, idx)
+		local pick = table.remove(candidates, rng(1, #candidates))
 		nodes[pick] = true
 	end
 	return nodes
@@ -90,75 +83,53 @@ function Engine:countNodes(nodes)
 	return n
 end
 
-function Engine:mutate(nodes, spec, archetype, rng)
-	local copy = {}
-	for k, v in pairs(nodes) do copy[k] = v end
-	if rng:random() < 0.5 then
-		-- add random reachable node
-		for nodeId, node in pairs(spec.tree.nodes) do
-			if node.alloc and not copy[nodeId] and rng:random() < 0.02 then
-				copy[nodeId] = true
-				break
-			end
-		end
-	else
-		-- remove non-mandatory
-		local mandatory = {}
-		for _, id in ipairs(archetype.mandatoryNodes or {}) do mandatory[id] = true end
-		local removable = {}
-		for id in pairs(copy) do
-			if not mandatory[id] then table.insert(removable, id) end
-		end
-		if #removable > 0 then
-			copy[removable[rng:random(1, #removable)]] = nil
-		end
-	end
-	return copy
-end
-
 function Engine:crossover(a, b, rng)
 	local child = {}
 	for id in pairs(a) do
-		if b[id] or rng:random() < 0.5 then child[id] = true end
+		if b[id] or rng() < 0.5 then child[id] = true end
 	end
 	for id in pairs(b) do
-		if a[id] or rng:random() < 0.5 then child[id] = true end
+		if a[id] or rng() < 0.5 then child[id] = true end
 	end
 	return child
 end
 
-function Engine:optimize(build, options)
-	options = options or {}
-	local archetypeName = options.archetype or "rf_arcane_devotion"
-	local archetype = self:loadArchetype(archetypeName)
-	local generations = options.generations or self.defaults.generations or 60
-	local populationSize = options.population or self.defaults.population or 60
+function Engine:runPhase(build, spec, archetype, options, phase, seedPopulation)
+	local generations = options.generations or 60
+	local populationSize = options.population or 60
 	local tournamentSize = self.defaults.tournamentSize or 5
 	local mutationRate = self.defaults.mutationRate or 0.15
-	local eliteCount = self.defaults.eliteCount or 4
-
+	local eliteCount = self.defaults.eliteCount or 6
 	local rng = math.random
-	math.randomseed(os.time())
 
-	local spec = build.spec
-	local population = {}
-	for i = 1, populationSize do
-		local ind = self:randomIndividual(spec, archetype, { random = function(_, a, b) return rng(a, b) end })
-		local score = self:evaluate(build, ind, archetype, options)
-		table.insert(population, { nodes = ind, fitness = score.total, detail = score })
+	local phaseOptions = {}
+	for k, v in pairs(options) do phaseOptions[k] = v end
+	phaseOptions.phase = phase
+
+	local population = seedPopulation or {}
+	if #population == 0 then
+		for i = 1, populationSize do
+			local ind = self:randomIndividual(spec, archetype, rng)
+			local score = self:evaluate(build, ind, archetype, phaseOptions)
+			table.insert(population, { nodes = ind, fitness = score.total, detail = score })
+		end
+	else
+		while #population < populationSize do
+			local idx = rng(1, math.min(#seedPopulation, eliteCount))
+			local mut = treeMut:mutate(seedPopulation[idx].nodes, spec, archetype, rng, mutationRate)
+			local score = self:evaluate(build, mut, archetype, phaseOptions)
+			table.insert(population, { nodes = mut, fitness = score.total, detail = score })
+		end
 	end
 
 	local best = population[1]
+	local phaseLabel = phase == "main" and "DPS" or "Regen/EHP"
+
 	for g = 1, generations do
 		table.sort(population, function(x, y) return x.fitness > y.fitness end)
-		if population[1].fitness > best.fitness then
-			best = population[1]
-		end
+		if population[1].fitness > (best.fitness or 0) then best = population[1] end
 		if options.onProgress then
-			options.onProgress(g, best.fitness)
-		end
-		if options.requireRegen and best.detail and best.detail.netRegen and best.detail.netRegen <= 0 then
-			-- penalize until regen positive; continue searching
+			options.onProgress(g, best.fitness, phaseLabel)
 		end
 
 		local nextGen = {}
@@ -168,36 +139,89 @@ function Engine:optimize(build, options)
 		while #nextGen < populationSize do
 			local p1 = tournament.select(population, tournamentSize, rng)
 			local p2 = tournament.select(population, tournamentSize, rng)
-			local childNodes = self:crossover(p1.nodes, p2.nodes, { random = rng })
+			local childNodes = self:crossover(p1.nodes, p2.nodes, rng)
 			if rng() < mutationRate then
-				childNodes = self:mutate(childNodes, spec, archetype, { random = rng })
+				childNodes = treeMut:mutate(childNodes, spec, archetype, rng, mutationRate)
 			end
-			local score = self:evaluate(build, childNodes, archetype, options)
+			local score = self:evaluate(build, childNodes, archetype, phaseOptions)
 			table.insert(nextGen, { nodes = childNodes, fitness = score.total, detail = score })
 		end
 		population = nextGen
 	end
 
 	table.sort(population, function(x, y) return x.fitness > y.fitness end)
-	best = population[1]
-	self:applyTree(build, best.nodes)
-	if options.optimizeClusters then
-		clusterOpt:optimize(build, archetype, options)
+	return population[1], population
+end
+
+function Engine:optimize(build, options)
+	options = options or {}
+	local archetypeName = options.archetype or "rf_arcane_devotion"
+	local archetype = self:loadArchetype(archetypeName)
+	local generations = options.generations or self.defaults.generations or 60
+	local populationSize = options.population or self.defaults.population or 60
+	local dualPhase = options.dualPhase ~= false
+
+	options.generations = generations
+	options.population = populationSize
+	options.mutateJewelPaths = true
+
+	math.randomseed(os.time())
+	local spec = build.spec
+
+	-- Phase 1: main objective (max DPS / mana scaling)
+	local phase1Best, phase1Pop = self:runPhase(build, spec, archetype, options, "main", nil)
+	local phase1Floor = {
+		dps = phase1Best.detail.dps,
+		netRegen = phase1Best.detail.netRegen,
+		ehp = phase1Best.detail.ehp,
+		nodes = phase1Best.nodes,
+	}
+
+	local finalBest = phase1Best
+	local phase2Best = nil
+
+	if dualPhase then
+		-- Phase 2: opposite objective (regen/eHP) seeded from phase-1 elites — retains DPS floor
+		local phase2Options = {}
+		for k, v in pairs(options) do phase2Options[k] = v end
+		phase2Options.phase1Floor = phase1Floor
+
+		phase2Best, _ = self:runPhase(build, spec, archetype, phase2Options, "opposite", phase1Pop)
+		if phase2Best.detail.dps >= phase1Floor.dps * (archetype.dpsRetainRatio or 0.92) then
+			finalBest = phase2Best
+		else
+			-- Keep phase-1 tree if phase-2 lost too much DPS
+			finalBest = phase1Best
+		end
 	end
-	if options.useTradeItems then
-		itemPool:apply(build, archetype.itemPool or "trade_329")
-	end
+
+	-- Final jewel reposition pass (split personality distance / zigzag)
+	self:applyTree(build, finalBest.nodes)
+	jewelOpt:optimize(build, archetype, { mutateJewelPaths = true, optimizeJewels = true })
+	if options.optimizeClusters then clusterOpt:optimize(build, archetype, options) end
+	if options.useTradeItems then itemPool:apply(build, archetype.itemPool or "trade_329_rf") end
 	build:BuildAll()
 	build:SyncTree()
 
 	return {
-		fitness = best.fitness,
-		dps = best.detail and best.detail.dps,
-		netRegen = best.detail and best.detail.netRegen,
-		ehp = best.detail and best.detail.ehp,
+		fitness = finalBest.fitness,
+		dps = finalBest.detail.dps,
+		netRegen = finalBest.detail.netRegen,
+		ehp = finalBest.detail.ehp,
+		phase1 = {
+			dps = phase1Floor.dps,
+			netRegen = phase1Floor.netRegen,
+			ehp = phase1Floor.ehp,
+		},
+		phase2 = phase2Best and {
+			dps = phase2Best.detail.dps,
+			netRegen = phase2Best.detail.netRegen,
+			ehp = phase2Best.detail.ehp,
+		} or nil,
 		generations = generations,
 		population = populationSize,
-		nodes = best.nodes,
+		dualPhase = dualPhase,
+		nodes = finalBest.nodes,
 	}
 end
 

@@ -78,24 +78,44 @@ function DeepOptimizer:ShowOptimizeDialog(treeTab)
 	end)
 	controls.regenCheck.state = true
 
-	controls.runButton = new("ButtonControl", { "TOPLEFT", controls.regenCheck, "BOTTOMLEFT" }, { 0, 12, 120, 20 }, "Run 60/60", function()
-		controls.statusLabel.label = "Optimizing..."
+	controls.dualPhaseCheck = new("CheckBoxControl", { "TOPLEFT", controls.regenCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Dual phase: 60 main + 60 opposite (retain DPS)", function(state)
+		self.dualPhase = state
+	end)
+	controls.dualPhaseCheck.state = true
+	controls.jewelCheck = new("CheckBoxControl", { "TOPLEFT", controls.dualPhaseCheck, "BOTTOMLEFT" }, { 0, 4, 18 }, "Reposition Split Personality (distance/zigzag)", function(state)
+		self.optimizeJewels = state
+	end)
+	controls.jewelCheck.state = true
+
+	controls.runButton = new("ButtonControl", { "TOPLEFT", controls.jewelCheck, "BOTTOMLEFT" }, { 0, 12, 140, 20 }, "Run 60+60", function()
+		local gens = tonumber(controls.generationsEdit.buf) or 60
+		controls.statusLabel.label = "Phase 1/2 (main DPS)..."
 		local result, err = self:Run({
 			archetype = self.selectedArchetype or "rf_arcane_devotion",
-			generations = tonumber(controls.generationsEdit.buf) or 60,
+			generations = gens,
 			population = tonumber(controls.populationEdit.buf) or 60,
 			useTradeItems = controls.tradeItemsCheck.state,
 			optimizeClusters = controls.clusterCheck.state,
 			requireRegen = controls.regenCheck.state,
-			onProgress = function(gen, best)
-				controls.statusLabel.label = string.format("Gen %d/%d — best fitness %.2f", gen, tonumber(controls.generationsEdit.buf) or 60, best)
+			dualPhase = controls.dualPhaseCheck.state,
+			optimizeJewels = controls.jewelCheck.state,
+			mutateJewelPaths = controls.jewelCheck.state,
+			onProgress = function(gen, best, phaseLabel)
+				controls.statusLabel.label = string.format("%s gen %d/%d — fitness %.2f", phaseLabel or "Main", gen, gens, best)
 			end,
 		})
 		if not result then
 			controls.statusLabel.label = "Error: " .. tostring(err)
 			return
 		end
-		controls.statusLabel.label = string.format("Done — DPS %.0f, regen +%.0f/s", result.dps or 0, result.netRegen or 0)
+		local msg = string.format("Done — DPS %.0f, regen +%.0f/s", result.dps or 0, result.netRegen or 0)
+		if result.phase1 then
+			msg = msg .. string.format(" | P1 DPS %.0f", result.phase1.dps or 0)
+		end
+		if result.phase2 then
+			msg = msg .. string.format(" | P2 regen +%.0f", result.phase2.netRegen or 0)
+		end
+		controls.statusLabel.label = msg
 		build:SyncTree()
 		build:BuildAll()
 	end)

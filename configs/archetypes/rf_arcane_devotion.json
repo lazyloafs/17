@@ -5,13 +5,23 @@
   "skillPoints": 121,
   "itemPool": "trade_329_rf",
   "minFireRes": 87,
-  "weights": {
+  "mainWeights": {
     "dps": 1.0,
-    "regen": 0.45,
-    "ehp": 0.00015,
-    "mana": 0.003,
-    "fireRes": 0.8
+    "regen": 0.15,
+    "ehp": 0.00005,
+    "mana": 0.004,
+    "fireRes": 0.5
   },
+  "oppositeWeights": {
+    "dps": 0.12,
+    "regen": 1.0,
+    "ehp": 0.0005,
+    "mana": 0.001,
+    "fireRes": 0.7
+  },
+  "dpsRetainRatio": 0.92,
+  "optimizeSplitPersonality": true,
+  "preferZigzagPaths": true,
   "mandatoryNodes": [],
   "bonusKeystones": [
     "Zealot's Oath",
