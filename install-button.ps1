@@ -40,6 +40,10 @@ if not self.deepOptimizer then
 end
 if self.deepOptimizer then
 	self.deepOptimizer:Init(self)
+	-- Wire Tree tab button when a build view is active
+	if self.modes and self.modes.BUILD then
+		self.deepOptimizer:HookBuild(self.modes.BUILD)
+	end
 end
 "@
         # Insert after Build module constructor begins (after function declaration)
@@ -48,7 +52,14 @@ end
             Set-Content -Path $BuildLua -Value $content -NoNewline
             Write-Host "Patched Build.lua with deep optimizer hook."
         } else {
-            Write-Warning "Could not auto-patch Build.lua — DeepOptimizer.lua was copied; add manual hook if button missing."
+            # Fallback: append idempotent init near end of file if constructor pattern differs
+            if ($content -notmatch [regex]::Escape($Marker)) {
+                $content = $content + "`n" + $hook + "`n"
+                Set-Content -Path $BuildLua -Value $content -NoNewline
+                Write-Host "Appended deep optimizer hook to Build.lua (fallback)."
+            } else {
+                Write-Warning "Could not auto-patch Build.lua — DeepOptimizer.lua was copied; add manual hook if button missing."
+            }
         }
     }
 } else {

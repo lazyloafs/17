@@ -1,3 +1,3 @@
 @echo off
-rem Run the deep optimizer headless (no PoB GUI). Writes optimized build to your local save.
-powershell -ExecutionPolicy Bypass -File "%~dp0scripts\run-headless.ps1" %*
+rem Queue dual-phase headless optimize (PoB must be patched; will start if needed).
+powershell -ExecutionPolicy Bypass -File "%~dp0scripts\run-headless.ps1" -DualPhase -OptimizeJewels %*

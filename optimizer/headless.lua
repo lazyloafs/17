@@ -18,7 +18,7 @@ function Headless:tryRun(build, deepOptimizer)
 	-- Clear request so we don't re-run
 	os.remove(reqPath)
 
-	deepOptimizer:RunHeadless(build, {
+	local result = deepOptimizer:RunHeadless(build, {
 		archetype = req.archetype or "rf_arcane_devotion",
 		generations = req.generations or 60,
 		population = req.population or 60,
@@ -27,9 +27,31 @@ function Headless:tryRun(build, deepOptimizer)
 		optimizeClusters = req.optimizeClusters ~= false,
 		optimizeJewels = req.optimizeJewels ~= false,
 		mutateJewelPaths = req.mutateJewelPaths ~= false,
+		preferZigzagPaths = req.preferZigzagPaths ~= false,
 		requireRegen = req.requireRegen ~= false,
+		phase1EliteCarryover = req.phase1EliteCarryover or 12,
+		phase2MutationRate = req.phase2MutationRate or 0.20,
 		headless = true,
 	})
+
+	-- Append a short status line for Launch_PoB_with_Optimizer.bat status mode
+	if result and settingsPath then
+		local logPath = settingsPath .. "/Path of Building/Settings/localoptimizer.log"
+		local lf = io.open(logPath, "a")
+		if lf then
+			lf:write(string.format(
+				"[%s] headless done selected=%s dps=%.0f regen=%.0f ehp=%.0f dual=%s\n",
+				os.date("%Y-%m-%d %H:%M:%S"),
+				tostring(result.selected),
+				result.dps or 0,
+				result.netRegen or 0,
+				result.ehp or 0,
+				tostring(result.dualPhase)
+			))
+			lf:close()
+		end
+	end
+	return result
 end
 
 return Headless

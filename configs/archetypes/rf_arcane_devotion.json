@@ -22,6 +22,8 @@
   "dpsRetainRatio": 0.92,
   "optimizeSplitPersonality": true,
   "preferZigzagPaths": true,
+  "phase1EliteCarryover": 12,
+  "phase2MutationRate": 0.20,
   "mandatoryNodes": [],
   "bonusKeystones": [
     "Zealot's Oath",

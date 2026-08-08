@@ -28,8 +28,11 @@ function M.rawStats(build)
 	local lifeRegen = output.LifeRegenRecovery or 0
 	local esRegen = output.ESRegenRecovery or 0
 	local netRegen = lifeRegen + esRegen
+	-- Subtract RF self-burn when PoB exposes it
 	if output.RFCostLife then
 		netRegen = netRegen - output.RFCostLife
+	elseif output.RadiatingNovaLife then
+		netRegen = netRegen - output.RadiatingNovaLife
 	end
 	return {
 		dps = dps,
@@ -37,6 +40,8 @@ function M.rawStats(build)
 		ehp = output.EHP or output.TotalEHP or 0,
 		mana = output.Mana or 0,
 		fireRes = output.FireResist or 75,
+		life = output.Life or 0,
+		es = output.EnergyShield or output.ES or 0,
 	}
 end
 
@@ -68,17 +73,29 @@ function M.score(build, archetype, options)
 			-- Bonus for keeping more DPS than floor
 			total = total + (stats.dps - floor.dps * dpsRetain) * 0.01
 		end
-		if stats.netRegen < (floor.netRegen or 0) then
+		-- Soft preference: do not collapse regen below phase-1 either
+		if stats.netRegen + 1 < (floor.netRegen or 0) then
 			total = total * 0.5
 		end
 	end
 
+	-- Preferred notables / keystones
 	if archetype.bonusKeystones then
 		local spec = build.spec
+		local alloc = spec.allocNodes or spec.nodes or {}
 		for _, kid in ipairs(archetype.bonusKeystones) do
-			if spec.allocNodes[kid] or spec.nodes[kid] then
-				total = total * 1.02
+			local found = false
+			if type(kid) == "number" then
+				found = alloc[kid] ~= nil
+			else
+				for nodeId, node in pairs(spec.tree.nodes) do
+					if alloc[nodeId] and node.dn == kid then
+						found = true
+						break
+					end
+				end
 			end
+			if found then total = total * 1.02 end
 		end
 	end
 
