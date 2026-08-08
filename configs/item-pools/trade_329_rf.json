@@ -1,0 +1,92 @@
+{
+  "description": "Non-self-owned trade league gear pool for 3.29 RF Arcane Devotion endgame (from tournament PoB baselines)",
+  "league": "Keepers of the Flame 3.29",
+  "selfOwned": false,
+  "slots": {
+    "Helmet": {
+      "name": "Indigon Hubris Circlet",
+      "notes": "Spell damage per mana spent — core DPS piece"
+    },
+    "Body Armour": {
+      "name": "The Ivory Tower Saint's Hauberk",
+      "notes": "Chaos damage mitigation via ES"
+    },
+    "Gloves": {
+      "name": "Rare ES/Mana/Int gloves",
+      "notes": "Fractured mana prefix, harvest defense"
+    },
+    "Boots": {
+      "name": "Rare ES/Int/MS boots",
+      "notes": "100+ ES, 30+ int, chill/freeze avoid for Mageblood"
+    },
+    "Amulet": {
+      "name": "Greatwolf Talisman",
+      "notes": "High attributes + mana"
+    },
+    "Ring 1": {
+      "name": "Shavronne's Revelation Moonstone Ring",
+      "notes": "Remove mana regen, %int variant endgame"
+    },
+    "Ring 2": {
+      "name": "Helical Ring",
+      "notes": "Spite essence craft — mana/int"
+    },
+    "Belt": {
+      "name": "Graven's Secret Cloth Belt",
+      "notes": "12-15% int implicit, ES"
+    },
+    "Weapon 1": {
+      "name": "Sceptre/Wand — fractured mana",
+      "notes": "Spell damage + mana"
+    },
+    "Weapon 2": {
+      "name": "Prism Guardian Archon Kite Shield",
+      "notes": "Life-reserved auras"
+    }
+  },
+  "flasks": [
+    { "name": "Coruscating Elixir", "notes": "Chaos res" },
+    { "name": "Mana flask — Forbidden Taste / instant", "notes": "27%+ quality, Forbidding" },
+    { "name": "Ruby flask", "notes": "Fire res" },
+    { "name": "Jade flask", "notes": "Evasion" },
+    { "name": "Quicksilver", "notes": "MS" }
+  ],
+  "jewels": [
+    { "name": "Unnatural Instinct Viridian Jewel", "socket": "near start" },
+    { "name": "Militant Faith Dominus", "notes": "10% mana as ES" },
+    { "name": "Split Personality Mana/Int x2", "notes": "Radius jewels" },
+    { "name": "Healthy Mind Cobalt Jewel", "notes": "Mana % ES" },
+    { "name": "Watcher's Eye — Clarity mod", "notes": "ES recovery" }
+  ],
+  "clusterJewels": [
+    {
+      "name": "Large Cluster — Burning/Fire",
+      "notables": [
+        "Added Small Passive Skills grant: 12% increased Burning Damage",
+        "Added Small Passive Skills grant: 12% increased Fire Damage"
+      ],
+      "allocNodes": [],
+      "notes": "Day 5 tournament baseline — 3d each"
+    },
+    {
+      "name": "Large Cluster — Mana",
+      "notables": [
+        "Added Small Passive Skills grant: 6% increased maximum Mana"
+      ],
+      "allocNodes": [],
+      "notes": "Second cluster for mana stacking"
+    }
+  ],
+  "tattoos": [
+    { "name": "Journey Tattoo of the Mind", "count": 4 },
+    { "name": "Tattoo of the Tukohama Shaman", "count": 8, "effect": "0.3% life regen each" },
+    { "name": "Tattoo of the Ramako Fleetfoot", "count": 2 }
+  ],
+  "pobReference": "https://pobb.in/_iQlQzqWeBt2",
+  "targetStats": {
+    "dps": 10000000,
+    "mana": 16000,
+    "es": 15000,
+    "netRegenMin": 1
+  }
+}

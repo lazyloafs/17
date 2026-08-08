@@ -1,0 +1,43 @@
+{
+  "name": "Righteous Fire of Arcane Devotion — Hierophant",
+  "class": "Templar",
+  "ascendancy": "Hierophant",
+  "skillPoints": 121,
+  "itemPool": "trade_329_rf",
+  "minFireRes": 87,
+  "mainWeights": {
+    "dps": 1.0,
+    "regen": 0.15,
+    "ehp": 0.00005,
+    "mana": 0.004,
+    "fireRes": 0.5
+  },
+  "oppositeWeights": {
+    "dps": 0.12,
+    "regen": 1.0,
+    "ehp": 0.0005,
+    "mana": 0.001,
+    "fireRes": 0.7
+  },
+  "dpsRetainRatio": 0.92,
+  "optimizeSplitPersonality": true,
+  "preferZigzagPaths": true,
+  "mandatoryNodes": [],
+  "bonusKeystones": [
+    "Zealot's Oath",
+    "Eternal Youth",
+    "Pain Attunement",
+    "Solipsism"
+  ],
+  "preferredNotables": [
+    "Divine Guidance",
+    "Sanctuary of Thought",
+    "Brand Mastery",
+    "Energy Shield Mastery",
+    "Damage Over Time Mastery",
+    "Mind Drinker",
+    "Thrill Killer"
+  ],
+  "clusterSockets": [],
+  "notes": "Tournament findings: stack mana+int, Indigon spell damage, Zealot's Oath regen, Brand Mastery mana recovery. Prioritize net positive ES regen after RF burn. Day-5+ cluster: Burning/Fire small passives + mana smalls."
+}

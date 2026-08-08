@@ -1,0 +1,9 @@
+{
+  "name": "generic_tanky",
+  "skillPoints": 120,
+  "itemPool": "trade_329_rf",
+  "weights": { "dps": 0.4, "regen": 0.6, "ehp": 0.0003, "mana": 0.001, "fireRes": 0.5 },
+  "minFireRes": 80,
+  "mandatoryNodes": [],
+  "bonusKeystones": ["Zealot's Oath"]
+}
